@@ -1,6 +1,6 @@
 # BIPARS-PYTORCH
 
-BIPARS is a weight reward shaping method, which is called bypass
+bi-level optimization of parameterized reward shaping(BIPARS) is a weight reward shaping method, which is called bypass
 
 ## References
 
