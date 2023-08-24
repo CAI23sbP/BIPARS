@@ -2,6 +2,8 @@
 
 bi-level optimization of parameterized reward shaping(BIPARS) is a weight reward shaping method, which is called bypass
 
+You can compare to [PPO-GAE](https://github.com/CAI23sbP/PPO-GAE-PYTORCH/tree/master) 
+
 ## References
 
 - [PPO CODE](https://github.com/nikhilbarhate99/PPO-PyTorch)
