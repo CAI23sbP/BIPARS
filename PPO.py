@@ -307,6 +307,7 @@ class PPO:
                "F": torch.zeros(truncation_size, dtype=float),
                "f_phi_s": torch.zeros(truncation_size, dtype=float)
                }
+        
         for t in range(truncation_size):
             seg["ob"][t] = self.buffer.states[t].cpu().clone()
             seg["ac"][t] = self.buffer.actions[t].cpu().clone()
@@ -326,10 +327,7 @@ class PPO:
         gae_lam = torch.empty(truncation_size, dtype = float)
         last_gae_lam = 0
         for t in reversed(range(truncation_size)):
-            if seg_done[t]:
-                non_terminal = 0 
-            else:
-                non_terminal = 1
+            non_terminal = 1 - seg_done[t]
             delta = seg_rewards[t] + seg_f[t] * seg_F[t] + self.gamma  * vpred[t + 1] * non_terminal - vpred[t]
             gae_lam[t] = delta + self.gamma * self.lam * non_terminal * last_gae_lam
             last_gae_lam = gae_lam[t]
@@ -348,12 +346,12 @@ class PPO:
         seg =  {"ob": torch.tensor([self.buffer.states[0].cpu().clone().tolist()  for _ in range(truncation_size)]),
                "ac": torch.tensor([self.buffer.actions[0].cpu().clone().tolist()  for _ in range(truncation_size)]),
                 "old_logprobs": torch.tensor([self.buffer.logprobs[0].cpu().clone()  for _ in range(truncation_size)]),
-        "rew": torch.zeros(truncation_size, dtype=float),
-        "v_pred_true": torch.zeros(truncation_size, dtype=float),
-        "done": torch.zeros(truncation_size, dtype=int),
-        "F": torch.zeros(truncation_size, dtype=float),
-        "f_phi_s": torch.zeros(truncation_size, dtype=float)
-        }
+                "rew": torch.zeros(truncation_size, dtype=float),
+                "v_pred_true": torch.zeros(truncation_size, dtype=float),
+                "done": torch.zeros(truncation_size, dtype=int),
+                "F": torch.zeros(truncation_size, dtype=float),
+                "f_phi_s": torch.zeros(truncation_size, dtype=float)
+                }
 
         for t in range(truncation_size):
             seg["ob"][t] = self.buffer.states[t].cpu().clone()
@@ -372,10 +370,7 @@ class PPO:
         last_gae_lam = 0
 
         for t in reversed(range(truncation_size)):
-            if seg_done[t]:
-                non_terminal = 0 
-            else:
-                non_terminal = 1            
+            non_terminal = 1 - seg_done[t]          
             delta = seg_rewards[t] + self.gamma * seg_v_pred_true[t + 1] * non_terminal - seg_v_pred_true[t]
             gae_lam[t] = delta + self.gamma * self.lam * non_terminal * last_gae_lam
             last_gae_lam = gae_lam[t]
