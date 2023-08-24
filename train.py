@@ -20,13 +20,13 @@ def train():
 
     has_continuous_action_space = True  # continuous action space; else discrete
 
-    max_ep_len = 1000                   # max timesteps in one episode
-    max_training_timesteps = int(3e6)   # break training loop if timeteps > max_training_timesteps
+    max_ep_len = 200                   # max timesteps in one episode
+    max_training_timesteps = int(12e5)   # break training loop if timeteps > max_training_timesteps
 
     print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
     log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
     save_model_freq = int(1e5)          # save model frequency (in num timesteps)
-
+    test_log_freq = 200
     action_std = 0.6                    # starting std for action distribution (Multivariate Normal)
     action_std_decay_rate = 0.05        # linearly decay action_std (action_std = action_std - action_std_decay_rate)
     min_action_std = 0.1                # minimum action_std (stop decay after action_std <= min_action_std)
@@ -76,13 +76,25 @@ def train():
     if not os.path.exists(log_dir):
           os.makedirs(log_dir)
 
+    log_dir_test = "PPO_logs_test"
+    if not os.path.exists(log_dir_test):
+          os.makedirs(log_dir_test)
+
+    log_dir_test = log_dir_test + '/' + env_name + '/'
+    if not os.path.exists(log_dir_test):
+          os.makedirs(log_dir_test)
+
     #### get number of log files in log directory
     run_num = 0
     current_num_files = next(os.walk(log_dir))[2]
     run_num = len(current_num_files)
+    run_num_test = 0
+    current_num_files_test = next(os.walk(log_dir_test))[2]
+    run_num_test = len(current_num_files_test)
 
     #### create new log file for each run
     log_f_name = log_dir + '/PPO_' + env_name + "_log_" + str(run_num) + ".csv"
+    log_f_name_test = log_dir_test + '/PPO_' + env_name + "_test_log_" + str(run_num_test) + ".csv"
 
     print("current logging run number for " + env_name + " : ", run_num)
     print("logging at : " + log_f_name)
@@ -170,6 +182,8 @@ def train():
     # logging file
     log_f = open(log_f_name,"w+")
     log_f.write('episode,timestep,reward\n')
+    log_f_test = open(log_f_name_test,"w+")
+    log_f_test.write('testing_steps,avg_steps\n')
 
     # printing and logging variables
     print_running_reward = 0
@@ -181,13 +195,19 @@ def train():
     time_step = 0
     i_episode = 0
     cn = 0
+    cn_episode = 0
+    list_of_step = [0,0,0]
     # training loop
     while time_step <= max_training_timesteps:
 
         state = env.reset()
         current_ep_reward = 0
+        cn_episode +=1
+        cn_steps = 0
 
         for t in range(1, max_ep_len+1):
+            cn_steps +=1
+            list_of_step[0] += cn_steps
 
             # select action with policy
             action, v_pred,  v_pred_true ,f_phi_s= ppo_agent.choose_action(state)
@@ -201,7 +221,7 @@ def train():
             ppo_agent.buffer.is_terminals.append(done)
 
             time_step +=1
-            current_ep_reward += reward -f_phi_s[0]*functions["random_function"]
+            current_ep_reward += reward +f_phi_s[0]*-functions["random_function"]
             # update PPO agent
             if time_step % update_timestep == 0:
                 ppo_agent.ppo_update(next_v_pred = v_pred, next_v_pred_true=v_pred_true)
@@ -224,6 +244,10 @@ def train():
 
                 log_running_reward = 0
                 log_running_episodes = 0
+            
+            list_of_step[1] += max_ep_len 
+            list_of_step[2] += list_of_step[0]/list_of_step[1]
+
 
             # printing average reward
             if time_step % print_freq == 0:
@@ -249,7 +273,10 @@ def train():
             # break; if the episode is over
             if done:
                 break
-
+        if cn_episode % test_log_freq == 0 :
+            log_f_test.write('{},{}\n'.format(time_step, list_of_step[2]))
+            log_f_test.flush()
+            list_of_step = [0,0,0]
         print_running_reward += current_ep_reward
         print_running_episodes += 1
 
